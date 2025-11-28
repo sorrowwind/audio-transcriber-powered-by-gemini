@@ -1,0 +1,7 @@
+{
+  "name": "Audio Transcriber",
+  "description": "A real-time audio transcription application using the Gemini API. Record your voice and get an instant, high-quality transcription in Russian.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
