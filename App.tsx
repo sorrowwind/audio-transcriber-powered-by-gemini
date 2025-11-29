@@ -62,7 +62,7 @@ const RecordButton: React.FC<{
     <button
       onClick={onClick}
       disabled={isDisabled}
-      className={`relative flex items-center justify-center w-24 h-24 rounded-full text-white shadow-lg transition-all duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-opacity-50
+      className={`relative flex items-center justify-center w-24 h-24 rounded-full text-white shadow-lg transition-all duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-opacity-50 select-none touch-manipulation
         ${className}
         ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
       `}
@@ -79,7 +79,7 @@ const StopButton: React.FC<{ onClick: () => void }> = ({ onClick }) => {
     return (
         <button
           onClick={onClick}
-          className="flex items-center justify-center w-20 h-20 rounded-full text-white shadow-lg transition-all duration-300 ease-in-out bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-4 focus:ring-red-400"
+          className="flex items-center justify-center w-20 h-20 rounded-full text-white shadow-lg transition-all duration-300 ease-in-out bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-4 focus:ring-red-400 select-none touch-manipulation"
           aria-label="Stop Recording"
         >
           <StopIcon className="w-8 h-8" />
@@ -121,7 +121,7 @@ const UploadButton: React.FC<{
             <button
                 onClick={handleButtonClick}
                 disabled={isDisabled}
-                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-full text-white shadow-md transition-colors duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-opacity-50
+                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-full text-white shadow-md transition-colors duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-opacity-50 select-none touch-manipulation
                   ${isIdle ? 'bg-slate-600 hover:bg-slate-700 focus:ring-slate-500' : ''}
                   ${isTranscribing ? 'bg-purple-500' : ''}
                   ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
@@ -284,7 +284,7 @@ const NoteEditor: React.FC<{
         <button
             type="button"
             onClick={onClick}
-            className="p-2.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/20 active:scale-95"
+            className="p-2.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/20 active:scale-95 touch-manipulation"
             aria-label={ariaLabel}
             title={ariaLabel}
         >
@@ -313,7 +313,7 @@ const NoteEditor: React.FC<{
                     {audioBlob && (
                         <button
                             onClick={handleDownload}
-                            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-green-50 hover:bg-green-100 text-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500/20"
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-green-50 hover:bg-green-100 text-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500/20 touch-manipulation"
                             aria-label="Download recorded audio"
                         >
                             <DownloadIcon className="w-4 h-4" />
@@ -323,7 +323,7 @@ const NoteEditor: React.FC<{
                     <button
                         onClick={handleCopy}
                         disabled={!hasContent || isCopied}
-                        className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20
+                        className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 touch-manipulation
                             ${isCopied 
                                 ? 'bg-green-50 text-green-700' 
                                 : 'bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed'
@@ -379,13 +379,13 @@ const LanguageSelector: React.FC<{
   disabled: boolean;
 }> = ({ currentLanguage, onLanguageChange, disabled }) => {
   return (
-    <div className="flex justify-center items-center gap-1 p-1.5 bg-slate-100 rounded-full mb-6 ring-1 ring-slate-900/5">
+    <div className="flex justify-center items-center gap-1 p-1.5 bg-slate-100 rounded-full mb-6 ring-1 ring-slate-900/5 select-none">
       {(Object.keys(LANGUAGES) as LanguageCode[]).map((lang) => (
         <button
           key={lang}
           onClick={() => onLanguageChange(lang)}
           disabled={disabled}
-          className={`px-5 py-2 text-sm font-semibold rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20
+          className={`px-5 py-2 text-sm font-semibold rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 touch-manipulation
             ${currentLanguage === lang 
                 ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5' 
                 : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
@@ -515,6 +515,54 @@ export default function App() {
   const [noteContent, setNoteContent] = useState('');
   const lastProcessedTranscriptLength = useRef(0);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+
+  // Check for standalone mode (installed app)
+  useEffect(() => {
+    const checkStandalone = () => {
+      const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || 
+                              (window.navigator as any).standalone === true;
+      setIsStandalone(isStandaloneMode);
+    };
+    checkStandalone();
+    window.matchMedia('(display-mode: standalone)').addEventListener('change', checkStandalone);
+  }, []);
+
+  // Request Wake Lock when recording
+  useEffect(() => {
+    const requestWakeLock = async () => {
+      if ('wakeLock' in navigator && appState === AppState.RECORDING) {
+        try {
+          wakeLockRef.current = await navigator.wakeLock.request('screen');
+        } catch (err) {
+          console.warn('Wake Lock request failed:', err);
+        }
+      }
+    };
+
+    const releaseWakeLock = async () => {
+      if (wakeLockRef.current) {
+        try {
+          await wakeLockRef.current.release();
+          wakeLockRef.current = null;
+        } catch (err) {
+            console.warn('Wake Lock release failed:', err);
+        }
+      }
+    };
+
+    if (appState === AppState.RECORDING) {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+
+    return () => {
+      releaseWakeLock();
+    };
+  }, [appState]);
+
 
   useEffect(() => {
     // Capture the PWA install prompt event
@@ -554,19 +602,32 @@ export default function App() {
     }
   }, [transcript]);
 
+  const vibrate = () => {
+      if (navigator.vibrate) {
+          navigator.vibrate(50);
+      }
+  };
+
   const handleStartRecording = () => {
+    vibrate();
     setNoteContent('');
     lastProcessedTranscriptLength.current = 0;
     startRecording();
   };
+  
+  const handleStopRecording = () => {
+      vibrate();
+      stopRecording();
+  };
 
   const handleFileSelect = (file: File) => {
+    vibrate();
     setNoteContent('');
     lastProcessedTranscriptLength.current = 0;
     transcribeFile(file);
   };
   
-  // Check for shared file on mount
+  // Check for shared file on mount and visibility change
   useEffect(() => {
       const checkSharedFile = async () => {
           if (!('indexedDB' in window)) return;
@@ -605,6 +666,13 @@ export default function App() {
       };
       
       checkSharedFile();
+      
+      // Also check when app comes to foreground (for Android share target)
+      document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+              checkSharedFile();
+          }
+      });
   }, [transcribeFile]);
 
 
@@ -692,12 +760,12 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center font-sans p-6 text-center bg-slate-50 text-slate-900 selection:bg-indigo-100 selection:text-indigo-900">
+    <div className="min-h-[100dvh] flex flex-col items-center font-sans p-6 pb-[env(safe-area-inset-bottom)] text-center bg-slate-50 text-slate-900 selection:bg-indigo-100 selection:text-indigo-900">
       <header className="mb-10 mt-4 relative w-full flex justify-center">
-        {deferredPrompt && (
+        {deferredPrompt && !isStandalone && (
           <button
             onClick={handleInstallClick}
-            className="absolute right-0 top-0 hidden sm:flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium shadow-md hover:bg-slate-800 transition-colors animate-fade-in"
+            className="absolute right-0 top-0 hidden sm:flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium shadow-md hover:bg-slate-800 transition-colors animate-fade-in touch-manipulation"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -705,7 +773,7 @@ export default function App() {
             Install App
           </button>
         )}
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center select-none">
             <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900">
             Audio Transcriber
             </h1>
@@ -713,10 +781,10 @@ export default function App() {
                 <span className="text-slate-500 font-medium">powered by</span>
                 <span className="bg-gradient-to-r from-blue-500 to-indigo-600 bg-clip-text text-transparent font-bold text-lg">Gemini</span>
             </div>
-            {deferredPrompt && (
+            {deferredPrompt && !isStandalone && (
               <button
                 onClick={handleInstallClick}
-                className="mt-4 sm:hidden flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium shadow-md hover:bg-slate-800 transition-colors"
+                className="mt-4 sm:hidden flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium shadow-md hover:bg-slate-800 transition-colors touch-manipulation"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -747,11 +815,11 @@ export default function App() {
                         resumeRecording={resumeRecording}
                     />
                     {isRecordingOrPaused ? (
-                        <StopButton onClick={stopRecording} />
+                        <StopButton onClick={handleStopRecording} />
                     ) : (
                         appState === AppState.IDLE && (
                             <>
-                                <span className="text-slate-400 font-medium text-lg">OR</span>
+                                <span className="text-slate-400 font-medium text-lg select-none">OR</span>
                                 <UploadButton 
                                     appState={appState}
                                     onFileSelect={handleFileSelect}
@@ -762,7 +830,7 @@ export default function App() {
                 </div>
             </div>
             
-            <p className="text-slate-500 font-medium h-6 animate-fade-in transition-all">
+            <p className="text-slate-500 font-medium h-6 animate-fade-in transition-all select-none">
                 {getStatusText()}
             </p>
         </div>
@@ -805,9 +873,11 @@ export default function App() {
 
       </main>
 
-      <footer className="text-slate-400 text-sm pb-6">
-        <p>© 2025 Gemini Audio Transcriber. Built for demonstration.</p>
-      </footer>
+      {!isStandalone && (
+        <footer className="text-slate-400 text-sm pb-6 select-none">
+            <p>© 2025 Gemini Audio Transcriber. Built for demonstration.</p>
+        </footer>
+      )}
     </div>
   );
 }
