@@ -5,7 +5,7 @@ import { viteStaticCopy } from 'vite-plugin-static-copy';
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
-  // Fix: Cast process to any to avoid TS error 'Property cwd does not exist on type Process'
+  // Cast process to any to avoid TS error 'Property cwd does not exist on type Process'
   const env = loadEnv(mode, (process as any).cwd(), '');
   return {
     plugins: [
